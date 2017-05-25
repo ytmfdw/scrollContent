@@ -15,6 +15,7 @@ import android.view.animation.LinearInterpolator;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
+import com.bumptech.glide.load.resource.drawable.GlideDrawable;
 import com.bumptech.glide.request.animation.GlideAnimation;
 import com.bumptech.glide.request.target.SimpleTarget;
 
@@ -179,12 +180,17 @@ public class BannerView extends View {
     };
 
     private void setDrawContent() {
+        if (currentObj != null && currentObj instanceof Bitmap) {
+            ((Bitmap) currentObj).recycle();
+            currentObj = null;
+        }
+        //下一个要显示的正好是上一个内容
         if (nextObj != null) {
             currentObj = nextObj;
         } else {
             currentObj = getBeanContent(data.get(currentIndex));
         }
-        
+        //新添加的
         if (currentIndex + 1 >= data.size()) {
             nextObj = getBeanContent(data.get(0));
         } else {
@@ -198,8 +204,15 @@ public class BannerView extends View {
                 return scrollBean.content;
             }
             case ScrollBean.TYPE_IMG: {
-                Bitmap bitmap = null;
-                return bitmap;
+                final Bitmap[] bitmap = {null};
+                Object obj = scrollBean.content;
+                Glide.with(getContext()).load(obj).asBitmap().into(new SimpleTarget<Bitmap>() {
+                    @Override
+                    public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
+                        bitmap[0] = resource;
+                    }
+                });
+                return bitmap[0];
             }
         }
         return null;
