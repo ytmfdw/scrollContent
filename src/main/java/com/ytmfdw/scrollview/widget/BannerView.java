@@ -13,6 +13,11 @@ import android.util.Log;
 import android.view.View;
 import android.view.animation.LinearInterpolator;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
+import com.bumptech.glide.request.animation.GlideAnimation;
+import com.bumptech.glide.request.target.SimpleTarget;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -53,6 +58,15 @@ public class BannerView extends View {
      * 当前偏移量，当动画结束后，该值为0
      */
     private float currentOffset = 0f;
+
+    /**
+     * 当前显示的内容
+     */
+    private Object currentObj = null;
+    /**
+     * 下一次要显示的内容
+     */
+    private Object nextObj = null;
 
     /**
      * 画笔
@@ -116,6 +130,7 @@ public class BannerView extends View {
     }
 
     public void startBanner() {
+        setDrawContent();
         post(animRunnable);
     }
 
@@ -142,6 +157,8 @@ public class BannerView extends View {
                         currentIndex = (++currentIndex % data.size());
                     }
 
+                    setDrawContent();
+
                     if (isAuto) {
                         postDelayed(animRunnable, scrollDuring);
                     }
@@ -160,6 +177,33 @@ public class BannerView extends View {
             objAnim.start();
         }
     };
+
+    private void setDrawContent() {
+        if (nextObj != null) {
+            currentObj = nextObj;
+        } else {
+            currentObj = getBeanContent(data.get(currentIndex));
+        }
+        
+        if (currentIndex + 1 >= data.size()) {
+            nextObj = getBeanContent(data.get(0));
+        } else {
+            nextObj = getBeanContent(data.get(currentIndex + 1));
+        }
+    }
+
+    private Object getBeanContent(ScrollBean scrollBean) {
+        switch (scrollBean.type) {
+            case ScrollBean.TYPE_STRING: {
+                return scrollBean.content;
+            }
+            case ScrollBean.TYPE_IMG: {
+                Bitmap bitmap = null;
+                return bitmap;
+            }
+        }
+        return null;
+    }
 
     public List<ScrollBean> getData() {
         return data;
@@ -185,49 +229,50 @@ public class BannerView extends View {
     }
 
     private void drawContent(Canvas canvas) {
-        if (currentIndex >= 0 && currentIndex < data.size()) {
-            ScrollBean bean = data.get(currentIndex);
-            switch (bean.type) {
-                case ScrollBean.TYPE_IMG: {
-                    Object content = bean.content;
-                    if (content instanceof Integer) {
-                        //从资源中获取Bitmap
-                    } else if (content instanceof String) {
-                        //从文件中获取图片
-                    } else if (content instanceof Bitmap) {
-                        //直接绘制
-                    } else if (content instanceof Drawable) {
-                        //直接绘制
-                    }
-                }
-                break;
-                case ScrollBean.TYPE_STRING: {
-                    String content = (String) bean.content;
-                    String nextContent = null;
-                    if (currentIndex + 1 < data.size()) {
-                        nextContent = (String) data.get(currentIndex + 1).content;
-                    } else {
-                        nextContent = (String) data.get(0).content;
-                    }
-                    //在中间绘制字符串
-                    //计算文字大小
-                    int textSize = getTextSize(content);
-                    mPaint.setTextSize(textSize);
-                    mPaint.setColor(textColor);
-                    //x开始绘制：(控件宽-字宽)/2
-                    float dx = (w - mPaint.measureText(content)) / 2;
-                    //y方向开始绘制：(控件高-字高)/2-assent
-                    float textH = (mPaint.descent() - mPaint.ascent());
-                    endValue = h - (h - textH) / 2;
-                    float dy = (h - textH) / 2 - mPaint.ascent() - currentOffset;
-                    canvas.drawText(content, dx, dy, mPaint);
-                    //第二行文本的y方向:
-                    dy = dy + textH + (h - textH) / 2;
-                    canvas.drawText(nextContent, dx, dy, mPaint);
-                }
-                break;
-            }
+        drawableScrollBean(canvas, false);
+        drawableScrollBean(canvas, true);
+    }
+
+    private void drawableScrollBean(Canvas canvas, boolean isFirst) {
+        float dy = -currentOffset;
+        if (isFirst) {
+            //绘制第一个
+            drawableContent(canvas, currentObj, dy);
+        } else {
+            //绘制第二个
+            dy = dy + h;
+            drawableContent(canvas, nextObj, dy);
         }
+    }
+
+    /**
+     * 绘制内容
+     *
+     * @param canvas
+     * @param bean
+     * @param dy
+     */
+    private void drawableContent(Canvas canvas, Object bean, float dy) {
+        if (bean instanceof String) {
+            //字符串类型
+            String content = (String) bean;
+            //在中间绘制字符串
+            //计算文字大小
+            int textSize = getTextSize(content);
+            mPaint.setTextSize(textSize);
+            mPaint.setColor(textColor);
+            //x开始绘制：(控件宽-字宽)/2
+            float dx = (w - mPaint.measureText(content)) / 2;
+            //y方向开始绘制：(控件高-字高)/2-assent
+            float textH = (mPaint.descent() - mPaint.ascent());
+//                endValue = h - (h - textH) / 2;
+            dy = dy + (h - textH) / 2 - mPaint.ascent();
+            canvas.drawText(content, dx, dy, mPaint);
+        } else if (bean instanceof Bitmap) {
+            Bitmap bitmap = (Bitmap) bean;
+            canvas.drawBitmap(bitmap, 0, dy, null);
+        }
+
     }
 
     private int getTextSize(String content) {
