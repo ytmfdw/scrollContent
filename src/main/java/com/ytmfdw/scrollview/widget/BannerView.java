@@ -30,7 +30,7 @@ public class BannerView extends View {
     /**
      * 动画持续时间，默认为2秒
      */
-    private long animDuring = 2000;
+    private long animDuring = 500;
     /**
      * 间隔时间，这个间隔时间是指两次动画之间的时间
      */
@@ -180,10 +180,6 @@ public class BannerView extends View {
     };
 
     private void setDrawContent() {
-        if (currentObj != null && currentObj instanceof Bitmap) {
-            ((Bitmap) currentObj).recycle();
-            currentObj = null;
-        }
         //下一个要显示的正好是上一个内容
         if (nextObj != null) {
             currentObj = nextObj;
@@ -198,7 +194,7 @@ public class BannerView extends View {
         }
     }
 
-    private Object getBeanContent(ScrollBean scrollBean) {
+    private Object getBeanContent(final ScrollBean scrollBean) {
         switch (scrollBean.type) {
             case ScrollBean.TYPE_STRING: {
                 return scrollBean.content;
@@ -206,13 +202,18 @@ public class BannerView extends View {
             case ScrollBean.TYPE_IMG: {
                 final Bitmap[] bitmap = {null};
                 Object obj = scrollBean.content;
-                Glide.with(getContext()).load(obj).asBitmap().into(new SimpleTarget<Bitmap>() {
-                    @Override
-                    public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
-                        bitmap[0] = resource;
-                    }
-                });
-                return bitmap[0];
+                if (!(obj instanceof Bitmap)) {
+                    Glide.with(getContext()).load(obj).asBitmap().into(new SimpleTarget<Bitmap>() {
+                        @Override
+                        public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
+                            bitmap[0] = resource;
+                            scrollBean.setTag(resource);
+                        }
+                    });
+                    return bitmap[0];
+                } else {
+                    return obj;
+                }
             }
         }
         return null;
@@ -250,9 +251,22 @@ public class BannerView extends View {
         float dy = -currentOffset;
         if (isFirst) {
             //绘制第一个
+            if (currentObj == null) {
+                currentObj = data.get(currentIndex).getTag();
+            }
+            if (currentObj == null) {
+                return;
+            }
             drawableContent(canvas, currentObj, dy);
         } else {
             //绘制第二个
+            if (nextObj == null) {
+                int next = (currentIndex + 1) >= data.size() ? 0 : (currentIndex + 1);
+                nextObj = data.get(next).getTag();
+            }
+            if (nextObj == null) {
+                return;
+            }
             dy = dy + h;
             drawableContent(canvas, nextObj, dy);
         }
@@ -283,7 +297,9 @@ public class BannerView extends View {
             canvas.drawText(content, dx, dy, mPaint);
         } else if (bean instanceof Bitmap) {
             Bitmap bitmap = (Bitmap) bean;
-            canvas.drawBitmap(bitmap, 0, dy, null);
+            if (bitmap != null && !bitmap.isRecycled()) {
+                canvas.drawBitmap(bitmap, 0, dy, null);
+            }
         }
 
     }

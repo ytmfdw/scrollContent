@@ -26,4 +26,14 @@ public class ScrollBean {
      * 补充说明
      */
     public String mark = null;
+
+    private Object tag = null;
+
+    public void setTag(Object obj) {
+        this.tag = obj;
+    }
+
+    public Object getTag() {
+        return this.tag;
+    }
 }

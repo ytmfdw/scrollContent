@@ -24,10 +24,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initData() {
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 10; i++) {
             ScrollBean bean = new ScrollBean();
-            bean.type = ScrollBean.TYPE_STRING;
-            bean.content = "测试数据" + i;
+            if (i % 2 == 0) {
+                bean.type = ScrollBean.TYPE_IMG;
+                bean.content = R.mipmap.ic_launcher;
+            } else {
+                bean.type = ScrollBean.TYPE_STRING;
+                bean.content = "测试数据" + i;
+            }
             data.add(bean);
         }
 
